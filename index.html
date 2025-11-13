@@ -8,13 +8,12 @@
 <!-- Styles -->
 <style>
 body { font-family:'Arial',sans-serif; background:#fff0f6; margin:0; color:#4d3b4d; }
-h1,h2,h3 { text-align:center; margin:12px 0; color:#7d4b7d; }
+h1,h2 { text-align:center; margin:12px 0; color:#7d4b7d; }
 .container { max-width:420px; margin:0 auto; padding:12px; }
 button { margin-top:10px; padding:12px 15px; border:none; border-radius:12px; background:linear-gradient(120deg,#ffb6c1,#ffc0cb); color:white; cursor:pointer; width:100%; font-size:16px; transition:0.2s; }
 button:hover { background:linear-gradient(120deg,#ff8da1,#ffb6c1); }
 .day { width:50px; height:50px; display:inline-block; margin:4px; text-align:center; vertical-align:top; border-radius:8px; background:#ffe6f0; line-height:50px; cursor:pointer; transition:0.2s; font-weight:bold; position:relative; }
 .day.received { background:#b78ac7; color:white; }
-.day span.preview { position:absolute; bottom:2px; left:2px; font-size:12px; opacity:0.7; }
 #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; }
 #modalContent { background:white; padding:15px; border-radius:12px; max-width:90%; max-height:80%; overflow:auto; }
 input,textarea,select { width:100%; margin-top:6px; padding:6px; border-radius:12px; border:1px solid #d4a5c0; resize:vertical; }
@@ -22,9 +21,10 @@ textarea { min-height:40px; background:#fff0f6; }
 #counterDisplay { font-size:22px; text-align:center; margin-top:12px; background:#ffe6f0; padding:12px; border-radius:12px; position:relative; }
 a { color:#7d4b7d; text-decoration:underline; }
 #monthSelector { margin-bottom:10px; }
+.message-controls { margin-top:6px; text-align:right; }
+.message-controls button { width:auto; margin-left:6px; padding:4px 6px; font-size:12px; }
 </style>
 
-<!-- ================== -->
 <!-- Firebase Scripts -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -63,7 +63,7 @@ a { color:#7d4b7d; text-decoration:underline; }
 <!-- Modal -->
 <div id="modal" onclick="closeModal(event)">
 <div id="modalContent">
-<h3>Message</h3>
+<h3 id="modalTitle">Message</h3>
 <div id="msgContent" style="min-height:40px; margin-bottom:12px;"></div>
 <div id="msgInputArea">
 <label>Message :</label>
@@ -80,10 +80,8 @@ a { color:#7d4b7d; text-decoration:underline; }
 </div>
 </div>
 
-<!-- ================== -->
-<!-- Firebase Config + JS de l’appli -->
 <script>
-// ====== Firebase Config ======
+// ===== Firebase config =====
 const firebaseConfig = {
   apiKey: "AIzaSyDfIxJ2yx21eFJ8o9sbBsr6mz19XI--9r4",
   authDomain: "nousapp-45128.firebaseapp.com",
@@ -95,7 +93,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ====== Données & DOM ======
+// ===== Variables =====
 let profile='';
 let selectedDay=null;
 let currentMonth=new Date().getMonth();
@@ -116,8 +114,9 @@ const msgContent=document.getElementById('msgContent');
 const msgInputArea=document.getElementById('msgInputArea');
 const monthSelectorEl=document.getElementById('monthSelector');
 const counterDisplay=document.getElementById('counterDisplay');
+const modalTitle=document.getElementById('modalTitle');
 
-// ====== Initialisation mois ======
+// ===== Initialisation mois =====
 monthNames.forEach((m,i)=>{
   const option=document.createElement('option');
   option.value=i;
@@ -130,7 +129,7 @@ monthSelectorEl.addEventListener('change',()=>{
   renderDays();
 });
 
-// ====== Navigation ======
+// ===== Navigation =====
 function goHome(){
   home.style.display='block';
   profilePage.style.display='none';
@@ -151,11 +150,10 @@ function openProfile(p){
   renderDays();
 }
 
-// ====== Calendrier du profil ======
+// ===== Calendrier =====
 function renderDays(){
   daysContainer.innerHTML='';
   const today=new Date();
-  const currentDay=(currentMonth===today.getMonth())?today.getDate():31;
   const daysInMonth=new Date(new Date().getFullYear(), currentMonth+1, 0).getDate();
 
   for(let day=1; day<=daysInMonth; day++){
@@ -168,25 +166,16 @@ function renderDays(){
       selectedDay=day;
       const existing=(surprises[profile][currentMonth] && surprises[profile][currentMonth][day]) || '';
       if(existing){
-        msgContent.innerHTML=existing;
-        msgInputArea.style.display='none';
-        modal.style.display='flex';
+        showReceived(existing);
       } else {
-        msgText.value=''; msgLink.value=''; msgEmoji.value='';
-        msgPreview.innerHTML='';
-        msgContent.innerHTML='';
-        msgInputArea.style.display='block';
-        msgText.addEventListener('input',updatePreview);
-        msgLink.addEventListener('input',updatePreview);
-        msgEmoji.addEventListener('input',updatePreview);
-        modal.style.display='flex';
+        showModal();
       }
     });
     daysContainer.appendChild(dayDiv);
   }
 }
 
-// ====== Modal ======
+// ===== Modal =====
 function closeModal(e){ if(e.target===modal) modal.style.display='none'; }
 function updatePreview(){
   let text=(msgEmoji.value?msgEmoji.value+' ':'')+msgText.value;
@@ -194,23 +183,62 @@ function updatePreview(){
   msgPreview.innerHTML=text;
 }
 
-// ====== Envoyer message ======
+function showModal(){
+  msgText.value=''; msgLink.value=''; msgEmoji.value='';
+  msgPreview.innerHTML='';
+  msgContent.innerHTML='';
+  msgInputArea.style.display='block';
+  modalTitle.textContent="Envoyer un message";
+  modal.style.display='flex';
+  msgText.addEventListener('input',updatePreview);
+  msgLink.addEventListener('input',updatePreview);
+  msgEmoji.addEventListener('input',updatePreview);
+}
+
+function showReceived(content){
+  msgContent.innerHTML=content;
+  msgInputArea.style.display='none';
+  modalTitle.textContent="Message reçu";
+  modal.style.display='flex';
+  // Ajouter boutons modifier/supprimer
+  const controls=document.createElement('div');
+  controls.className='message-controls';
+  const editBtn=document.createElement('button');
+  editBtn.textContent='Modifier';
+  editBtn.onclick=()=>{
+    msgInputArea.style.display='block';
+    msgText.value=''; msgLink.value=''; msgEmoji.value='';
+    msgPreview.innerHTML='';
+    msgContent.innerHTML='';
+    modalTitle.textContent="Modifier le message";
+    modal.style.display='flex';
+  };
+  const delBtn=document.createElement('button');
+  delBtn.textContent='Supprimer';
+  delBtn.onclick=()=>{
+    if(confirm('Supprimer ce message ?')){
+      db.ref('surprises/'+profile+'/'+currentMonth+'/'+selectedDay).remove();
+      modal.style.display='none';
+    }
+  };
+  controls.appendChild(editBtn);
+  controls.appendChild(delBtn);
+  msgContent.appendChild(controls);
+}
+
+// ===== Envoi message =====
 function saveMessage(){
   if(!selectedDay) return;
   if(!surprises[otherProfile[profile]][currentMonth]) surprises[otherProfile[profile]][currentMonth]={};
   let text=(msgEmoji.value?msgEmoji.value+' ':'')+msgText.value;
   if(msgLink.value) text+=`<br><a href="${msgLink.value}" target="_blank">Lien</a>`;
   surprises[otherProfile[profile]][currentMonth][selectedDay]=text;
-
-  // Enregistrement Firebase
   db.ref('surprises/'+otherProfile[profile]+'/'+currentMonth+'/'+selectedDay).set({ text: text });
-
   modal.style.display='none';
   renderDays();
-  alert("Message envoyé !");
 }
 
-// ====== Compteur amoureux ======
+// ===== Compteur amoureux =====
 function calculateTime(){
   const start=new Date(document.getElementById('startDate').value);
   if(!start.getTime()){ counterDisplay.textContent=''; return; }
@@ -235,7 +263,7 @@ function loadCoupleDate(){
   });
 }
 
-// ====== Charger surprises ======
+// ===== Charger surprises temps réel =====
 function loadSurprises(){
   db.ref('surprises').on('value', snapshot=>{
     const data = snapshot.val();
