@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nous App - Profils & Surprises</title>
 
-<!-- Styles -->
 <style>
 body { font-family:'Arial',sans-serif; background:#fff0f6; margin:0; color:#4d3b4d; }
 h1,h2 { text-align:center; margin:12px 0; color:#7d4b7d; }
@@ -97,6 +96,8 @@ const db = firebase.database();
 let profile='';
 let selectedDay=null;
 let currentMonth=new Date().getMonth();
+let isEditing=false;
+let editingDay=null;
 const otherProfile={"Moi":"Mon copain","Mon copain":"Moi"};
 const surprises={"Moi":{},"Mon copain":{}};
 const monthNames=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -190,6 +191,7 @@ function showModal(){
   msgInputArea.style.display='block';
   modalTitle.textContent="Envoyer un message";
   modal.style.display='flex';
+  isEditing=false;
   msgText.addEventListener('input',updatePreview);
   msgLink.addEventListener('input',updatePreview);
   msgEmoji.addEventListener('input',updatePreview);
@@ -199,13 +201,15 @@ function showReceived(content){
   msgContent.innerHTML=content;
   msgInputArea.style.display='none';
   modalTitle.textContent="Message reçu";
-  modal.style.display='flex';
-  // Ajouter boutons modifier/supprimer
+
   const controls=document.createElement('div');
   controls.className='message-controls';
+
   const editBtn=document.createElement('button');
   editBtn.textContent='Modifier';
   editBtn.onclick=()=>{
+    isEditing=true;
+    editingDay=selectedDay;
     msgInputArea.style.display='block';
     msgText.value=''; msgLink.value=''; msgEmoji.value='';
     msgPreview.innerHTML='';
@@ -213,6 +217,7 @@ function showReceived(content){
     modalTitle.textContent="Modifier le message";
     modal.style.display='flex';
   };
+
   const delBtn=document.createElement('button');
   delBtn.textContent='Supprimer';
   delBtn.onclick=()=>{
@@ -221,20 +226,27 @@ function showReceived(content){
       modal.style.display='none';
     }
   };
+
   controls.appendChild(editBtn);
   controls.appendChild(delBtn);
   msgContent.appendChild(controls);
 }
 
-// ===== Envoi message =====
+// ===== Envoi / mise à jour message =====
 function saveMessage(){
   if(!selectedDay) return;
-  if(!surprises[otherProfile[profile]][currentMonth]) surprises[otherProfile[profile]][currentMonth]={};
+  let targetDay = isEditing ? editingDay : selectedDay;
+
   let text=(msgEmoji.value?msgEmoji.value+' ':'')+msgText.value;
   if(msgLink.value) text+=`<br><a href="${msgLink.value}" target="_blank">Lien</a>`;
-  surprises[otherProfile[profile]][currentMonth][selectedDay]=text;
-  db.ref('surprises/'+otherProfile[profile]+'/'+currentMonth+'/'+selectedDay).set({ text: text });
+
+  if(!surprises[otherProfile[profile]][currentMonth]) surprises[otherProfile[profile]][currentMonth]={};
+  surprises[otherProfile[profile]][currentMonth][targetDay] = text;
+  db.ref('surprises/'+otherProfile[profile]+'/'+currentMonth+'/'+targetDay).set({ text: text });
+
   modal.style.display='none';
+  isEditing=false;
+  editingDay=null;
   renderDays();
 }
 
