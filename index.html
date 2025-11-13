@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nous App - Profils & Surprises</title>
-
 <style>
 body { font-family:'Arial',sans-serif; background:#fff0f6; margin:0; color:#4d3b4d; }
 h1,h2 { text-align:center; margin:12px 0; color:#7d4b7d; }
@@ -27,7 +26,6 @@ a { color:#7d4b7d; text-decoration:underline; }
 <!-- Firebase Scripts -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 </head>
 <body>
 
@@ -136,13 +134,11 @@ function goHome(){
   profilePage.style.display='none';
   document.getElementById('counter').style.display='none';
 }
-
 function showSection(section){
   home.style.display='none';
   profilePage.style.display='none';
   document.getElementById('counter').style.display=(section==='counter')?'block':'none';
 }
-
 function openProfile(p){
   profile=p;
   profileNameEl.textContent="Profil : "+profile;
@@ -154,23 +150,17 @@ function openProfile(p){
 // ===== Calendrier =====
 function renderDays(){
   daysContainer.innerHTML='';
-  const today=new Date();
   const daysInMonth=new Date(new Date().getFullYear(), currentMonth+1, 0).getDate();
-
   for(let day=1; day<=daysInMonth; day++){
     const dayDiv=document.createElement('div');
     dayDiv.className='day';
     dayDiv.textContent=day;
     if(surprises[profile][currentMonth] && surprises[profile][currentMonth][day]) dayDiv.classList.add('received');
-
     dayDiv.addEventListener('click',()=>{
       selectedDay=day;
       const existing=(surprises[profile][currentMonth] && surprises[profile][currentMonth][day]) || '';
-      if(existing){
-        showReceived(existing);
-      } else {
-        showModal();
-      }
+      if(existing){ showReceived(existing); }
+      else{ showModal(); }
     });
     daysContainer.appendChild(dayDiv);
   }
@@ -183,11 +173,9 @@ function updatePreview(){
   if(msgLink.value) text+=`<br><a href="${msgLink.value}" target="_blank">Lien</a>`;
   msgPreview.innerHTML=text;
 }
-
 function showModal(){
   msgText.value=''; msgLink.value=''; msgEmoji.value='';
-  msgPreview.innerHTML='';
-  msgContent.innerHTML='';
+  msgPreview.innerHTML=''; msgContent.innerHTML='';
   msgInputArea.style.display='block';
   modalTitle.textContent="Envoyer un message";
   modal.style.display='flex';
@@ -196,7 +184,6 @@ function showModal(){
   msgLink.addEventListener('input',updatePreview);
   msgEmoji.addEventListener('input',updatePreview);
 }
-
 function showReceived(content){
   msgContent.innerHTML=content;
   msgInputArea.style.display='none';
@@ -204,7 +191,6 @@ function showReceived(content){
 
   const controls=document.createElement('div');
   controls.className='message-controls';
-
   const editBtn=document.createElement('button');
   editBtn.textContent='Modifier';
   editBtn.onclick=()=>{
@@ -217,7 +203,6 @@ function showReceived(content){
     modalTitle.textContent="Modifier le message";
     modal.style.display='flex';
   };
-
   const delBtn=document.createElement('button');
   delBtn.textContent='Supprimer';
   delBtn.onclick=()=>{
@@ -226,7 +211,6 @@ function showReceived(content){
       modal.style.display='none';
     }
   };
-
   controls.appendChild(editBtn);
   controls.appendChild(delBtn);
   msgContent.appendChild(controls);
@@ -236,14 +220,11 @@ function showReceived(content){
 function saveMessage(){
   if(!selectedDay) return;
   let targetDay = isEditing ? editingDay : selectedDay;
-
   let text=(msgEmoji.value?msgEmoji.value+' ':'')+msgText.value;
   if(msgLink.value) text+=`<br><a href="${msgLink.value}" target="_blank">Lien</a>`;
-
   if(!surprises[otherProfile[profile]][currentMonth]) surprises[otherProfile[profile]][currentMonth]={};
-  surprises[otherProfile[profile]][currentMonth][targetDay] = text;
+  surprises[otherProfile[profile]][currentMonth][targetDay]=text;
   db.ref('surprises/'+otherProfile[profile]+'/'+currentMonth+'/'+targetDay).set({ text: text });
-
   modal.style.display='none';
   isEditing=false;
   editingDay=null;
@@ -262,35 +243,24 @@ function calculateTime(){
   if(months<0){ years--; months+=12; }
   counterDisplay.innerHTML=`<span style="font-size:26px;">💖 ${years} an(s), ${months} mois et ${days} jour(s) 💖</span>`;
 }
-
-function saveCoupleDate(date){
-  db.ref('compteur/couple').set({ startDate: date });
-}
-
-function loadCoupleDate(){
-  db.ref('compteur/couple/startDate').once('value').then(snapshot=>{
-    const date = snapshot.val();
-    if(date) document.getElementById('startDate').value = date;
-    calculateTime();
-  });
-}
+function saveCoupleDate(date){ db.ref('compteur/couple').set({ startDate: date }); }
+function loadCoupleDate(){ db.ref('compteur/couple/startDate').once('value').then(snapshot=>{ const date=snapshot.val(); if(date) document.getElementById('startDate').value=date; calculateTime(); }); }
 
 // ===== Charger surprises temps réel =====
 function loadSurprises(){
   db.ref('surprises').on('value', snapshot=>{
     const data = snapshot.val();
     if(data){
-      surprises["Moi"] = data["Moi"] || {};
-      surprises["Mon copain"] = data["Mon copain"] || {};
+      surprises["Moi"]=data["Moi"]||{};
+      surprises["Mon copain"]=data["Mon copain"]||{};
       if(profile) renderDays();
     }
   });
 }
 
-// Appels au démarrage
+// ===== Initialisation =====
 loadSurprises();
 loadCoupleDate();
 </script>
-
 </body>
 </html>
