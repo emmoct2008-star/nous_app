@@ -97,7 +97,6 @@ let currentMonth=new Date().getMonth();
 let isEditing=false;
 let editingDay=null;
 const otherProfile={"Moi":"Mon copain","Mon copain":"Moi"};
-const surprises={"Moi":{},"Mon copain":{}};
 const monthNames=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 
 const home=document.getElementById('home');
@@ -125,7 +124,7 @@ monthNames.forEach((m,i)=>{
 monthSelectorEl.value=currentMonth;
 monthSelectorEl.addEventListener('change',()=>{
   currentMonth=parseInt(monthSelectorEl.value);
-  renderDays();
+  loadMonthData();
 });
 
 // ===== Navigation =====
@@ -144,26 +143,28 @@ function openProfile(p){
   profileNameEl.textContent="Profil : "+profile;
   home.style.display='none';
   profilePage.style.display='block';
-  renderDays();
+  loadMonthData();
 }
 
 // ===== Calendrier =====
-function renderDays(){
+function loadMonthData(){
   daysContainer.innerHTML='';
   const daysInMonth=new Date(new Date().getFullYear(), currentMonth+1, 0).getDate();
-  for(let day=1; day<=daysInMonth; day++){
-    const dayDiv=document.createElement('div');
-    dayDiv.className='day';
-    dayDiv.textContent=day;
-    if(surprises[profile][currentMonth] && surprises[profile][currentMonth][day]) dayDiv.classList.add('received');
-    dayDiv.addEventListener('click',()=>{
-      selectedDay=day;
-      const existing=(surprises[profile][currentMonth] && surprises[profile][currentMonth][day]) || '';
-      if(existing){ showReceived(existing); }
-      else{ showModal(); }
-    });
-    daysContainer.appendChild(dayDiv);
-  }
+  db.ref('surprises/'+profile+'/'+currentMonth).on('value', snapshot=>{
+    const data=snapshot.val() || {};
+    for(let day=1; day<=daysInMonth; day++){
+      const dayDiv=document.createElement('div');
+      dayDiv.className='day';
+      dayDiv.textContent=day;
+      if(data[day]) dayDiv.classList.add('received');
+      dayDiv.addEventListener('click',()=>{
+        selectedDay=day;
+        if(data[day]) showReceived(data[day].text);
+        else showModal();
+      });
+      daysContainer.appendChild(dayDiv);
+    }
+  });
 }
 
 // ===== Modal =====
@@ -195,7 +196,6 @@ function showReceived(content){
   editBtn.textContent='Modifier';
   editBtn.onclick=()=>{
     isEditing=true;
-    editingDay=selectedDay;
     msgInputArea.style.display='block';
     msgText.value=''; msgLink.value=''; msgEmoji.value='';
     msgPreview.innerHTML='';
@@ -219,16 +219,11 @@ function showReceived(content){
 // ===== Envoi / mise à jour message =====
 function saveMessage(){
   if(!selectedDay) return;
-  let targetDay = isEditing ? editingDay : selectedDay;
   let text=(msgEmoji.value?msgEmoji.value+' ':'')+msgText.value;
   if(msgLink.value) text+=`<br><a href="${msgLink.value}" target="_blank">Lien</a>`;
-  if(!surprises[otherProfile[profile]][currentMonth]) surprises[otherProfile[profile]][currentMonth]={};
-  surprises[otherProfile[profile]][currentMonth][targetDay]=text;
-  db.ref('surprises/'+otherProfile[profile]+'/'+currentMonth+'/'+targetDay).set({ text: text });
+  db.ref('surprises/'+otherProfile[profile]+'/'+currentMonth+'/'+selectedDay).set({ text: text });
   modal.style.display='none';
-  isEditing=false;
-  editingDay=null;
-  renderDays();
+  loadMonthData();
 }
 
 // ===== Compteur amoureux =====
@@ -246,20 +241,7 @@ function calculateTime(){
 function saveCoupleDate(date){ db.ref('compteur/couple').set({ startDate: date }); }
 function loadCoupleDate(){ db.ref('compteur/couple/startDate').once('value').then(snapshot=>{ const date=snapshot.val(); if(date) document.getElementById('startDate').value=date; calculateTime(); }); }
 
-// ===== Charger surprises temps réel =====
-function loadSurprises(){
-  db.ref('surprises').on('value', snapshot=>{
-    const data = snapshot.val();
-    if(data){
-      surprises["Moi"]=data["Moi"]||{};
-      surprises["Mon copain"]=data["Mon copain"]||{};
-      if(profile) renderDays();
-    }
-  });
-}
-
 // ===== Initialisation =====
-loadSurprises();
 loadCoupleDate();
 </script>
 </body>
